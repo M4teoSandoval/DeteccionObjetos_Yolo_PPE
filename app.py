@@ -1,5 +1,4 @@
 import os
-# Evita el warning de Ultralytics en Streamlit Cloud
 os.environ["YOLO_CONFIG_DIR"] = "/tmp/Ultralytics"
 
 import streamlit as st
@@ -9,7 +8,58 @@ import pandas as pd
 from ultralytics import YOLO
 
 # -----------------------
-# Diccionario de Traducción
+# CONFIGURACIÓN
+# -----------------------
+st.set_page_config(page_title="Detección PPE", layout="wide")
+
+# -----------------------
+# ESTILO GLOBAL (MEJOR CONTRASTE)
+# -----------------------
+st.markdown("""
+<style>
+.main {
+    background-color: #0f172a;
+}
+h1, h2, h3, h4, h5 {
+    color: #111827;
+}
+.block-container {
+    padding-top: 2rem;
+}
+.card {
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0px 4px 15px rgba(0,0,0,0.08);
+}
+.metric {
+    background-color: #1e293b;
+    color: white;
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# -----------------------
+# SIDEBAR (NUEVA ESTRUCTURA)
+# -----------------------
+st.sidebar.title("⚙️ Panel")
+st.sidebar.markdown("""
+**Sistema de detección PPE**
+
+Sube una imagen y analiza:
+- Personas detectadas
+- Uso de casco
+- Uso de chaleco
+""")
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("👨‍💻 **Mateo Sandoval**")
+
+# -----------------------
+# MODELOS
 # -----------------------
 TRADUCCION_CLASES = {
     "boots": "Botas",
@@ -21,14 +71,6 @@ TRADUCCION_CLASES = {
     "vest": "Chaleco"
 }
 
-# -----------------------
-# Configuración de página
-# -----------------------
-st.set_page_config(page_title="Detección de PPE", layout="wide")
-
-# -----------------------
-# Cargar modelos
-# -----------------------
 @st.cache_resource
 def load_models():
     modelo_personas = YOLO("yolov8n.pt")
@@ -38,36 +80,17 @@ def load_models():
 modelo_personas, modelo_ppe = load_models()
 
 # -----------------------
-# HEADER
+# HEADER DIFERENTE (MINIMALISTA)
 # -----------------------
 st.markdown("""
-<div style='background: linear-gradient(90deg, #0f172a, #1e3a8a); padding: 25px; border-radius: 12px'>
-    <h1 style='color: white; margin: 0;'>🏭 Sistema Inteligente de Detección de EPP</h1>
-    <p style='color: #cbd5f5; margin: 5px 0 0 0;'>
-        Monitoreo automático de seguridad industrial mediante visión artificial
-    </p>
-</div>
+<h1 style='margin-bottom:0;'>🏭 Detección Inteligente de EPP</h1>
+<p style='color:gray; margin-top:0;'>Sistema de visión artificial para seguridad industrial</p>
 """, unsafe_allow_html=True)
 
 # -----------------------
-# INSTRUCCIONES
+# UPLOAD
 # -----------------------
-st.markdown("""
-<div style='background-color:#f1f5f9; padding:20px; border-radius:10px; margin-top:15px;'>
-<b>📌 Instrucciones de uso:</b>
-<ol>
-<li>Sube una fotografía del trabajador.</li>
-<li>El sistema detectará automáticamente a las personas.</li>
-<li>Se verificará el uso de <b>Casco y Chaleco</b>.</li>
-<li>El semáforo indicará el estado de acceso.</li>
-</ol>
-</div>
-""", unsafe_allow_html=True)
-
-# -----------------------
-# UPLOADER
-# -----------------------
-st.markdown("### 📤 Cargar imagen")
+st.markdown("### 📤 Subir imagen")
 foto = st.file_uploader("", type=["jpg", "png", "jpeg"])
 
 # -----------------------
@@ -75,42 +98,41 @@ foto = st.file_uploader("", type=["jpg", "png", "jpeg"])
 # -----------------------
 if foto:
     imagen_original = Image.open(foto).convert("RGB")
-    
-    with st.expander("🖼️ Ver imagen original", expanded=False):
-        st.image(imagen_original, use_container_width=True)
+
+    colA, colB = st.columns([2, 1])
+
+    with colA:
+        st.image(imagen_original, caption="Imagen cargada", use_container_width=True)
 
     img_np = np.array(imagen_original)
-
-    # Detectar personas
     resultados_personas = modelo_personas(img_np)[0]
 
     personas = []
     for box in resultados_personas.boxes:
-        cls = int(box.cls[0])
-        if cls == 0:
+        if int(box.cls[0]) == 0:
             x1, y1, x2, y2 = map(int, box.xyxy[0])
             personas.append((x1, y1, x2, y2))
 
-    st.markdown(f"""
-    <div style='background-color:#e0f2fe; padding:15px; border-radius:10px; margin-top:10px;'>
-    <h3 style='margin:0;'>👥 Personas detectadas: {len(personas)}</h3>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("---")
-
-    # Procesar cada persona
-    for i, (x1, y1, x2, y2) in enumerate(personas, 1):
-
+    # -----------------------
+    # MÉTRICA PRINCIPAL
+    # -----------------------
+    with colB:
         st.markdown(f"""
-        <div style='background-color:#111827; padding:10px; border-radius:8px; margin-top:10px;'>
-        <h4 style='color:white; margin:0;'>👤 Trabajador {i}</h4>
+        <div class='metric'>
+        <h2>{len(personas)}</h2>
+        <p>Personas detectadas</p>
         </div>
         """, unsafe_allow_html=True)
 
+    st.markdown("---")
+
+    # -----------------------
+    # TRABAJADORES
+    # -----------------------
+    for i, (x1, y1, x2, y2) in enumerate(personas, 1):
+
         persona_crop = imagen_original.crop((x1, y1, x2, y2))
         persona_np = np.array(persona_crop)
-
         resultados_ppe = modelo_ppe(persona_np)[0]
 
         draw = ImageDraw.Draw(persona_crop)
@@ -129,13 +151,13 @@ if foto:
 
             etiquetas.append(label_espanol)
             datos_analitica.append({
-                "Equipo Detectado": label_espanol,
-                "Confianza": f"{conf*100:.2f}%"
+                "Equipo": label_espanol,
+                "Confianza": f"{conf*100:.1f}%"
             })
 
             x1o, y1o, x2o, y2o = map(int, box.xyxy[0])
-            draw.rectangle([x1o, y1o, x2o, y2o], outline="#00FF00", width=3)
-            draw.text((x1o, max(0, y1o - 15)), f"{label_espanol} {conf:.2f}", fill="#00FF00")
+            draw.rectangle([x1o, y1o, x2o, y2o], outline="#22c55e", width=3)
+            draw.text((x1o, max(0, y1o - 15)), f"{label_espanol}", fill="#22c55e")
 
         col1, col2 = st.columns([1, 2])
 
@@ -143,45 +165,35 @@ if foto:
             st.image(persona_crop, caption=f"Trabajador {i}", use_container_width=True)
 
         with col2:
-            st.markdown("#### 🚥 Control de Acceso")
-
+            # -----------------------
+            # ESTADO
+            # -----------------------
             requeridos = {"Casco", "Chaleco"}
             presentes = set(etiquetas)
 
             if requeridos.issubset(presentes):
-                st.markdown("""
-                <div style='background-color:#dcfce7; padding:15px; border-radius:10px;'>
-                🟢 <b>ACCESO PERMITIDO</b><br>
-                Cumple con Casco y Chaleco
-                </div>
-                """, unsafe_allow_html=True)
+                st.success("🟢 Cumple con EPP obligatorio")
             else:
                 faltantes = requeridos - presentes
-                st.markdown(f"""
-                <div style='background-color:#fee2e2; padding:15px; border-radius:10px;'>
-                🔴 <b>ACCESO DENEGADO</b><br>
-                Faltan: {', '.join(faltantes)}
-                </div>
-                """, unsafe_allow_html=True)
+                st.error(f"🔴 Faltan: {', '.join(faltantes)}")
 
-            st.markdown("#### 📊 Resultados de detección")
-
+            # -----------------------
+            # TABLA
+            # -----------------------
             if datos_analitica:
-                df_analitica = pd.DataFrame(datos_analitica)
-                df_analitica = df_analitica.sort_values(by="Confianza", ascending=False).reset_index(drop=True)
-                st.dataframe(df_analitica, use_container_width=True)
+                df = pd.DataFrame(datos_analitica)
+                st.dataframe(df, use_container_width=True)
             else:
-                st.warning("⚠️ No se detectó ningún equipo de protección.")
+                st.warning("Sin detecciones")
 
         st.markdown("---")
 
 # -----------------------
 # FOOTER
 # -----------------------
-st.markdown("<br><br>", unsafe_allow_html=True)
 st.markdown("""
 <hr>
-<p style='text-align:center; font-size:14px; color:#6b7280;'>
-Desarrollado por <b>Mateo Sandoval</b> • Ingeniería de Sistemas • 2026
+<p style='text-align:center; color:gray;'>
+Desarrollado por <b>Mateo Sandoval</b> • 2026
 </p>
 """, unsafe_allow_html=True)
