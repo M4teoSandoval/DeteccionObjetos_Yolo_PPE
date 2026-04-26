@@ -1,5 +1,6 @@
 import os
 os.environ["YOLO_CONFIG_DIR"] = "/tmp/Ultralytics"
+os.environ["TORCH_HOME"] = "/tmp/torch"
 
 import streamlit as st
 from PIL import Image, ImageDraw
@@ -13,50 +14,64 @@ from ultralytics import YOLO
 st.set_page_config(page_title="Detección PPE", layout="wide")
 
 # -----------------------
-# ESTILO GLOBAL (MEJOR CONTRASTE)
+# ESTILO (MODO OSCURO REAL)
 # -----------------------
 st.markdown("""
 <style>
-.main {
+body {
     background-color: #0f172a;
+    color: white;
 }
-h1, h2, h3, h4, h5 {
-    color: #111827;
+h1, h2, h3, h4 {
+    color: white;
 }
 .block-container {
     padding-top: 2rem;
 }
+
+/* Cards */
 .card {
-    background-color: #ffffff;
+    background-color: #1e293b;
     padding: 20px;
     border-radius: 12px;
-    box-shadow: 0px 4px 15px rgba(0,0,0,0.08);
 }
+
+/* Métricas */
 .metric {
-    background-color: #1e293b;
+    background-color: #22c55e;
     color: white;
-    padding: 15px;
-    border-radius: 10px;
+    padding: 20px;
+    border-radius: 12px;
     text-align: center;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+/* Sidebar */
+section[data-testid="stSidebar"] {
+    background-color: #020617;
+}
+
+/* Texto secundario */
+.subtext {
+    color: #94a3b8;
 }
 </style>
 """, unsafe_allow_html=True)
 
 # -----------------------
-# SIDEBAR (NUEVA ESTRUCTURA)
+# SIDEBAR
 # -----------------------
 st.sidebar.title("⚙️ Panel")
 st.sidebar.markdown("""
-**Sistema de detección PPE**
+Sistema de detección de EPP
 
-Sube una imagen y analiza:
-- Personas detectadas
-- Uso de casco
-- Uso de chaleco
+• Personas  
+• Casco  
+• Chaleco  
 """)
-
 st.sidebar.markdown("---")
-st.sidebar.markdown("👨‍💻 **Mateo Sandoval**")
+st.sidebar.markdown("👨‍💻 Mateo Sandoval")
 
 # -----------------------
 # MODELOS
@@ -80,12 +95,10 @@ def load_models():
 modelo_personas, modelo_ppe = load_models()
 
 # -----------------------
-# HEADER DIFERENTE (MINIMALISTA)
+# HEADER
 # -----------------------
-st.markdown("""
-<h1 style='margin-bottom:0;'>🏭 Detección Inteligente de EPP</h1>
-<p style='color:gray; margin-top:0;'>Sistema de visión artificial para seguridad industrial</p>
-""", unsafe_allow_html=True)
+st.markdown("<h1>🏭 Detección de EPP</h1>", unsafe_allow_html=True)
+st.markdown("<p class='subtext'>Sistema de visión artificial para seguridad industrial</p>", unsafe_allow_html=True)
 
 # -----------------------
 # UPLOAD
@@ -102,7 +115,7 @@ if foto:
     colA, colB = st.columns([2, 1])
 
     with colA:
-        st.image(imagen_original, caption="Imagen cargada", use_container_width=True)
+        st.image(imagen_original, caption="Imagen cargada")
 
     img_np = np.array(imagen_original)
     resultados_personas = modelo_personas(img_np)[0]
@@ -114,13 +127,12 @@ if foto:
             personas.append((x1, y1, x2, y2))
 
     # -----------------------
-    # MÉTRICA PRINCIPAL
+    # MÉTRICA
     # -----------------------
     with colB:
         st.markdown(f"""
         <div class='metric'>
-        <h2>{len(personas)}</h2>
-        <p>Personas detectadas</p>
+        {len(personas)}<br>Personas detectadas
         </div>
         """, unsafe_allow_html=True)
 
@@ -157,29 +169,23 @@ if foto:
 
             x1o, y1o, x2o, y2o = map(int, box.xyxy[0])
             draw.rectangle([x1o, y1o, x2o, y2o], outline="#22c55e", width=3)
-            draw.text((x1o, max(0, y1o - 15)), f"{label_espanol}", fill="#22c55e")
+            draw.text((x1o, max(0, y1o - 15)), label_espanol, fill="#22c55e")
 
         col1, col2 = st.columns([1, 2])
 
         with col1:
-            st.image(persona_crop, caption=f"Trabajador {i}", use_container_width=True)
+            st.image(persona_crop, caption=f"Trabajador {i}")
 
         with col2:
-            # -----------------------
-            # ESTADO
-            # -----------------------
             requeridos = {"Casco", "Chaleco"}
             presentes = set(etiquetas)
 
             if requeridos.issubset(presentes):
-                st.success("🟢 Cumple con EPP obligatorio")
+                st.success("Cumple con EPP obligatorio")
             else:
                 faltantes = requeridos - presentes
-                st.error(f"🔴 Faltan: {', '.join(faltantes)}")
+                st.error(f"Faltan: {', '.join(faltantes)}")
 
-            # -----------------------
-            # TABLA
-            # -----------------------
             if datos_analitica:
                 df = pd.DataFrame(datos_analitica)
                 st.dataframe(df, use_container_width=True)
@@ -194,6 +200,6 @@ if foto:
 st.markdown("""
 <hr>
 <p style='text-align:center; color:gray;'>
-Desarrollado por <b>Mateo Sandoval</b> • 2026
+Desarrollado por Mateo Sandoval • 2026
 </p>
 """, unsafe_allow_html=True)
