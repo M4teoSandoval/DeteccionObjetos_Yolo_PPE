@@ -101,10 +101,21 @@ st.markdown("<h1>🏭 Detección de EPP</h1>", unsafe_allow_html=True)
 st.markdown("<p class='subtext'>Sistema de visión artificial para seguridad industrial</p>", unsafe_allow_html=True)
 
 # -----------------------
-# UPLOAD
+# ENTRADA (UPLOAD + CÁMARA)
 # -----------------------
-st.markdown("### 📤 Subir imagen")
-foto = st.file_uploader("", type=["jpg", "png", "jpeg"])
+st.markdown("### 📤 Subir imagen o tomar foto")
+
+col_upload, col_camera = st.columns(2)
+
+with col_upload:
+    foto = st.file_uploader("Subir archivo", type=["jpg", "png", "jpeg"])
+
+with col_camera:
+    foto_camara = st.camera_input("Tomar foto")
+
+# Si se toma foto, tiene prioridad
+if foto_camara is not None:
+    foto = foto_camara
 
 # -----------------------
 # PROCESAMIENTO
