@@ -13,29 +13,14 @@ from ultralytics import YOLO
 st.set_page_config(page_title="Detección PPE", layout="wide")
 
 # -----------------------
-# ESTILO (MODO OSCURO REAL)
+# ESTILO
 # -----------------------
 st.markdown("""
 <style>
-body {
-    background-color: #0f172a;
-    color: white;
-}
-h1, h2, h3, h4 {
-    color: white;
-}
-.block-container {
-    padding-top: 2rem;
-}
+body { background-color: #0f172a; color: white; }
+h1, h2, h3, h4 { color: white; }
+.block-container { padding-top: 2rem; }
 
-/* Cards */
-.card {
-    background-color: #1e293b;
-    padding: 20px;
-    border-radius: 12px;
-}
-
-/* Métricas */
 .metric {
     background-color: #22c55e;
     color: white;
@@ -46,15 +31,11 @@ h1, h2, h3, h4 {
     font-weight: bold;
 }
 
-/* Sidebar */
 section[data-testid="stSidebar"] {
     background-color: #020617;
 }
 
-/* Texto secundario */
-.subtext {
-    color: #94a3b8;
-}
+.subtext { color: #94a3b8; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -87,9 +68,7 @@ TRADUCCION_CLASES = {
 
 @st.cache_resource
 def load_models():
-    modelo_personas = YOLO("yolov8n.pt")
-    modelo_ppe = YOLO("best.pt")
-    return modelo_personas, modelo_ppe
+    return YOLO("yolov8n.pt"), YOLO("best.pt")
 
 modelo_personas, modelo_ppe = load_models()
 
@@ -100,10 +79,18 @@ st.markdown("<h1>🏭 Detección de EPP</h1>", unsafe_allow_html=True)
 st.markdown("<p class='subtext'>Sistema de visión artificial para seguridad industrial</p>", unsafe_allow_html=True)
 
 # -----------------------
-# UPLOAD
+# ENTRADA (LIMPIA Y ORDENADA)
 # -----------------------
-st.markdown("### 📤 Subir imagen")
-foto = st.file_uploader("", type=["jpg", "png", "jpeg"])
+st.markdown("### 📤 Subir imagen o tomar foto")
+
+opcion = st.radio("Selecciona fuente:", ["Subir imagen", "Tomar foto"], horizontal=True)
+
+foto = None
+
+if opcion == "Subir imagen":
+    foto = st.file_uploader("Selecciona una imagen", type=["jpg", "png", "jpeg"])
+else:
+    foto = st.camera_input("Toma una foto")
 
 # -----------------------
 # PROCESAMIENTO
@@ -119,11 +106,11 @@ if foto:
     img_np = np.array(imagen_original)
     resultados_personas = modelo_personas(img_np)[0]
 
-    personas = []
-    for box in resultados_personas.boxes:
-        if int(box.cls[0]) == 0:
-            x1, y1, x2, y2 = map(int, box.xyxy[0])
-            personas.append((x1, y1, x2, y2))
+    personas = [
+        tuple(map(int, box.xyxy[0]))
+        for box in resultados_personas.boxes
+        if int(box.cls[0]) == 0
+    ]
 
     # -----------------------
     # MÉTRICA
@@ -143,25 +130,24 @@ if foto:
     for i, (x1, y1, x2, y2) in enumerate(personas, 1):
 
         persona_crop = imagen_original.crop((x1, y1, x2, y2))
-        persona_np = np.array(persona_crop)
-        resultados_ppe = modelo_ppe(persona_np)[0]
+        resultados_ppe = modelo_ppe(np.array(persona_crop))[0]
 
         draw = ImageDraw.Draw(persona_crop)
         etiquetas = []
 
         for box in resultados_ppe.boxes:
             cls = int(box.cls[0])
-            label_ingles = modelo_ppe.names[cls]
+            label = modelo_ppe.names[cls]
 
-            if label_ingles == "person":
+            if label == "person":
                 continue
 
-            label_espanol = TRADUCCION_CLASES.get(label_ingles, label_ingles.capitalize())
-            etiquetas.append(label_espanol)
+            label_es = TRADUCCION_CLASES.get(label, label.capitalize())
+            etiquetas.append(label_es)
 
             x1o, y1o, x2o, y2o = map(int, box.xyxy[0])
             draw.rectangle([x1o, y1o, x2o, y2o], outline="#22c55e", width=3)
-            draw.text((x1o, max(0, y1o - 15)), label_espanol, fill="#22c55e")
+            draw.text((x1o, max(0, y1o - 15)), label_es, fill="#22c55e")
 
         col1, col2 = st.columns([1, 2])
 
