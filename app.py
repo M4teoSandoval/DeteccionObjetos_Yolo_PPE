@@ -5,7 +5,6 @@ os.environ["TORCH_HOME"] = "/tmp/torch"
 import streamlit as st
 from PIL import Image, ImageDraw
 import numpy as np
-import pandas as pd
 from ultralytics import YOLO
 
 # -----------------------
@@ -149,7 +148,6 @@ if foto:
 
         draw = ImageDraw.Draw(persona_crop)
         etiquetas = []
-        datos_analitica = []
 
         for box in resultados_ppe.boxes:
             cls = int(box.cls[0])
@@ -159,13 +157,7 @@ if foto:
                 continue
 
             label_espanol = TRADUCCION_CLASES.get(label_ingles, label_ingles.capitalize())
-            conf = float(box.conf[0])
-
             etiquetas.append(label_espanol)
-            datos_analitica.append({
-                "Equipo": label_espanol,
-                "Confianza": f"{conf*100:.1f}%"
-            })
 
             x1o, y1o, x2o, y2o = map(int, box.xyxy[0])
             draw.rectangle([x1o, y1o, x2o, y2o], outline="#22c55e", width=3)
@@ -185,12 +177,6 @@ if foto:
             else:
                 faltantes = requeridos - presentes
                 st.error(f"Faltan: {', '.join(faltantes)}")
-
-            if datos_analitica:
-                df = pd.DataFrame(datos_analitica)
-                st.dataframe(df, use_container_width=True)
-            else:
-                st.warning("Sin detecciones")
 
         st.markdown("---")
 
